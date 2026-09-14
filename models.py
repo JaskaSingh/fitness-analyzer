@@ -103,25 +103,65 @@ class Participant:
             f"temp={self._baseline_temperature})"
         )    
 
+class Session:
+    """A training session: one participant and their observation windows."""
+
+    def __init__(self, participant, observations):
+        self.participant = participant
+        self.observations = observations
+
+    @classmethod
+    def from_raw(cls, profile, raw_observations):
+        """Build a Session directly from generator output."""
+        participant = Participant.from_dict(profile)
+        observations = [Observation.from_dict(item) for item in raw_observations]
+        return cls(participant, observations)
+
+    def usable_observations(self):
+        """Return only the observations worth analysing.
+
+        A window is usable when it carries both values the classification rules
+        need and the signal quality is high enough to trust them.
+        """
+        usable = []
+        for observation in self.observations:
+            if observation.heart_rate is None:
+                continue
+            if observation.activity_level is None:
+                continue
+            if not observation.is_high_quality():
+                continue
+            usable.append(observation)
+        return usable
+
+    def __repr__(self):
+        return (
+            f"Session(participant={self.participant.participant_id}, "
+            f"windows={len(self.observations)}, "
+            f"usable={len(self.usable_observations())})"
+        )
+
+
 if __name__ == "__main__":
     from data_generator import generate_fitness_data
 
     profile, raw_observations = generate_fitness_data(
         participant_id="P001",
-        scenario="resting",
+        scenario="poor_quality",
         seed=42,
         number_of_windows=12,
     )
 
-    print("Profile:", profile)
+    session = Session.from_raw(profile, raw_observations)
+
+    print("Participant:", session.participant)
+    print("Delta for 95 bpm:", session.participant.heart_rate_delta(95))
+    print("Delta for missing:", session.participant.heart_rate_delta(None))
     print()
 
-    observations = [Observation.from_dict(item) for item in raw_observations]
-
-    for observation in observations:
+    for observation in session.observations:
         print(observation, "high quality:", observation.is_high_quality())
+    print()
 
-        participant = Participant.from_dict(profile)
-    print(participant)
-    for observation in observations[:3]:
-        print(observation.timestamp, participant.heart_rate_delta(observation.heart_rate))
+    usable = session.usable_observations()
+    print(f"Usable: {len(usable)} of {len(session.observations)}")

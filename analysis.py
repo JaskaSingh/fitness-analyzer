@@ -1,5 +1,8 @@
 """Calculation helpers for the fitness session analyzer."""
 
+INTENSITY_LEVELS = ("resting", "moderate_activity", "high_activity")
+
+RECOVERY_THRESHOLD = -15.0
 
 def mean_of(values):
     """Return the arithmetic mean, or None when there is nothing to average."""
@@ -65,3 +68,58 @@ def format_value(value, digits=1):
     if isinstance(value, float):
         return round(value, digits)
     return value
+
+def detect_recovery(observations, threshold=RECOVERY_THRESHOLD):
+    """True when both heart rate and activity fall across the session.
+
+    The first third of the observations is compared against the last third.
+    Recovery is reported only when both signals decline by more than the
+    threshold, because activity alone is unreliable in low-effort sessions
+    where small absolute values produce large percentage swings.
+    """
+    third = len(observations) // 3
+    if third < 1:
+        return False
+
+    first = observations[:third]
+    last = observations[-third:]
+
+    heart_rate_change = percent_change(
+        mean_of(collect_field(first, "heart_rate")),
+        mean_of(collect_field(last, "heart_rate")),
+    )
+    activity_change = percent_change(
+        mean_of(collect_field(first, "activity_level")),
+        mean_of(collect_field(last, "activity_level")),
+    )
+
+    if heart_rate_change is None or activity_change is None:
+        return False
+
+    return heart_rate_change < threshold and activity_change < threshold
+
+
+def classify_intensity(heart_rate_delta, activity_average):
+    """Return an intensity level from the heart rate delta and mean activity.
+
+    Each signal is classified on its own scale and the lower of the two is
+    returned, so a session counts as high intensity only when both agree.
+    """
+    if heart_rate_delta is None or activity_average is None:
+        return None
+
+    if heart_rate_delta < 15:
+        by_heart_rate = 0
+    elif heart_rate_delta <= 42:
+        by_heart_rate = 1
+    else:
+        by_heart_rate = 2
+
+    if activity_average < 0.28:
+        by_activity = 0
+    elif activity_average <= 0.67:
+        by_activity = 1
+    else:
+        by_activity = 2
+
+    return INTENSITY_LEVELS[min(by_heart_rate, by_activity)]

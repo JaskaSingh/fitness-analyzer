@@ -1,6 +1,12 @@
 """Domain classes for the fitness session analyzer"""
 
-from analysis import collect_field, summarize
+from analysis import (
+    classify_intensity,
+    collect_field,
+    detect_recovery,
+    mean_of,
+    summarize,
+)
 
 class Observation:
     """A single observation window from a wearable device."""
@@ -194,6 +200,33 @@ class Session:
             result[field_name] = summarize(collect_field(usable, field_name))
         return result
 
+    def classify(self):
+        """Return the session classification.
+
+        The order of the checks matters. Insufficient data comes first because
+        no other question can be answered without measurements. Recovery comes
+        before intensity because a recovering session averages out to a middling
+        effort level, so the intensity rules would describe it as moderate and
+        lose the fact that it was trending down.
+        """
+        usable = self.usable_observations()
+        if not usable:
+            return "insufficient_data"
+
+        if detect_recovery(usable):
+            return "recovery"
+
+        heart_rates = collect_field(usable, "heart_rate")
+        activity_levels = collect_field(usable, "activity_level")
+
+        heart_rate_delta = self.participant.heart_rate_delta(mean_of(heart_rates))
+        activity_average = mean_of(activity_levels)
+
+        level = classify_intensity(heart_rate_delta, activity_average)
+        if level is None:
+            return "insufficient_data"
+        return level
+
     def __repr__(self):
         return (
             f"Session(participant={self.participant.participant_id}, "
@@ -207,7 +240,7 @@ if __name__ == "__main__":
 
     profile, raw_observations = generate_fitness_data(
         participant_id="P001",
-        scenario="recovery",
+        scenario="resting",
         seed=42,
         number_of_windows=12,
     )
@@ -247,3 +280,6 @@ if __name__ == "__main__":
         print(f"  {field_name}:")
         for key, value in stats.items():
             print(f"      {key}: {value}")
+
+    print()
+    print("Classification:", session.classify())

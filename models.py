@@ -1,5 +1,7 @@
 """Domain classes for the fitness session analyzer"""
 
+from analysis import collect_field, summarize
+
 class Observation:
     """A single observation window from a wearable device."""
 
@@ -144,6 +146,14 @@ class Participant:
 class Session:
     """A training session: one participant and their observation windows."""
 
+    SUMMARY_FIELDS = (
+            "heart_rate",
+            "skin_response",
+            "temperature",
+            "activity_level",
+            "signal_quality",
+        )
+
     def __init__(self, participant, observations):
         self.participant = participant
         self.observations = observations
@@ -171,6 +181,19 @@ class Session:
             usable.append(observation)
         return usable
 
+    def summary(self):
+        """Return summary statistics for each field across usable observations.
+
+        Fields are summarised only over windows that passed validation and the
+        quality check, so a session with nothing usable returns a dictionary
+        with the same shape and zero counts throughout.
+        """
+        usable = self.usable_observations()
+        result = {}
+        for field_name in self.SUMMARY_FIELDS:
+            result[field_name] = summarize(collect_field(usable, field_name))
+        return result
+
     def __repr__(self):
         return (
             f"Session(participant={self.participant.participant_id}, "
@@ -184,7 +207,7 @@ if __name__ == "__main__":
 
     profile, raw_observations = generate_fitness_data(
         participant_id="P001",
-        scenario="resting",
+        scenario="recovery",
         seed=42,
         number_of_windows=12,
     )
@@ -217,3 +240,10 @@ if __name__ == "__main__":
         signal_quality=0.9,
     )
     print(broken, "issues:", broken.validation_issues())
+
+    print()
+    print("Summary:")
+    for field_name, stats in session.summary().items():
+        print(f"  {field_name}:")
+        for key, value in stats.items():
+            print(f"      {key}: {value}")

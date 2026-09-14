@@ -37,6 +37,44 @@ class Observation:
             return False
         return self.signal_quality > threshold
 
+    def validation_issues(self):
+        """Return a list of problems with this observation.
+
+        An empty list means the observation passed every rule.
+        """
+        issues = []
+
+        if self.heart_rate is None:
+            issues.append("heart_rate missing")
+        elif not 35 <= self.heart_rate <= 205:
+            issues.append(f"heart_rate {self.heart_rate} outside 35-205")
+
+        if self.activity_level is None:
+            issues.append("activity_level missing")
+        elif not 0 <= self.activity_level <= 1:
+            issues.append(f"activity_level {self.activity_level} outside 0-1")
+
+        if self.signal_quality is None:
+            issues.append("signal_quality missing")
+        elif not 0 <= self.signal_quality <= 1:
+            issues.append(f"signal_quality {self.signal_quality} outside 0-1")
+
+        if self.temperature is None:
+            issues.append("temperature missing")
+        elif not 25 <= self.temperature <= 42:
+            issues.append(f"temperature {self.temperature} outside 25-42")
+
+        if self.skin_response is None:
+            issues.append("skin_response missing")
+        elif self.skin_response < 0:
+            issues.append(f"skin_response {self.skin_response} below 0")
+
+        return issues
+
+    def is_valid(self):
+        """True when the observation has no validation issues."""
+        return not self.validation_issues()
+    
     def __repr__(self):
         return (
             f"Observation(t={self.timestamp}, hr={self.heart_rate}, "
@@ -120,14 +158,13 @@ class Session:
     def usable_observations(self):
         """Return only the observations worth analysing.
 
-        A window is usable when it carries both values the classification rules
-        need and the signal quality is high enough to trust them.
+        A window is usable when every value passes validation and the sensor
+        reports enough signal quality for those values to be trusted. Those are
+        two separate questions, which is why they are two separate checks.
         """
         usable = []
         for observation in self.observations:
-            if observation.heart_rate is None:
-                continue
-            if observation.activity_level is None:
+            if not observation.is_valid():
                 continue
             if not observation.is_high_quality():
                 continue
@@ -147,7 +184,7 @@ if __name__ == "__main__":
 
     profile, raw_observations = generate_fitness_data(
         participant_id="P001",
-        scenario="poor_quality",
+        scenario="resting",
         seed=42,
         number_of_windows=12,
     )
@@ -160,8 +197,23 @@ if __name__ == "__main__":
     print()
 
     for observation in session.observations:
-        print(observation, "high quality:", observation.is_high_quality())
-    print()
+        print(observation)
+        print("    valid:", observation.is_valid(), end="")
+        print("  high quality:", observation.is_high_quality())
+        issues = observation.validation_issues()
+        if issues:
+            for issue in issues:
+                print("    issue:", issue)
 
     usable = session.usable_observations()
     print(f"Usable: {len(usable)} of {len(session.observations)}")
+
+    broken = Observation(
+        timestamp=99,
+        heart_rate=265,
+        skin_response=-1.0,
+        temperature=None,
+        activity_level=-0.2,
+        signal_quality=0.9,
+    )
+    print(broken, "issues:", broken.validation_issues())

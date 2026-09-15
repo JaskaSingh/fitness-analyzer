@@ -329,6 +329,4 @@ if __name__ == "__main__":
     analysis = session.analyze()
 
     print()
-    print(Report(analysis).render())
-    print()
     print(DetailedReport(analysis).render())

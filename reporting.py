@@ -11,7 +11,7 @@ CLASSIFICATION_LABELS = {
     "resting": "Resting",
     "moderate_activity": "Moderate activity",
     "high_activity": "High activity",
-    "recovery": "Recovery",
+    "recovery": "Recovering",
     "insufficient_data": "Insufficient data",
 }
 
@@ -68,14 +68,20 @@ class DetailedReport(Report):
         lines.append("")
         lines.append("Why this classification")
         lines.append("-" * 40)
-        lines.append(
-            f"Heart rate change across session: "
-            f"{format_value(reasons.get('heart_rate_change_percent'))}%"
+
+        raw_heart_rate_change = reasons.get("heart_rate_change_percent")
+        raw_activity_change = reasons.get("activity_change_percent")
+        heart_rate_change = (
+            "-" if raw_heart_rate_change is None
+            else f"{format_value(raw_heart_rate_change)}%"
         )
-        lines.append(
-            f"Activity change across session:   "
-            f"{format_value(reasons.get('activity_change_percent'))}%"
+        activity_change = (
+            "-" if raw_activity_change is None
+            else f"{format_value(raw_activity_change)}%"
         )
+
+        lines.append(f"Heart rate change across session: {heart_rate_change}")
+        lines.append(f"Activity change across session:   {activity_change}")
         lines.append(
             f"Recovery is reported when both fall below "
             f"{format_value(threshold)}%."

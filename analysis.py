@@ -69,17 +69,16 @@ def format_value(value, digits=1):
         return round(value, digits)
     return value
 
-def detect_recovery(observations, threshold=RECOVERY_THRESHOLD):
-    """True when both heart rate and activity fall across the session.
+def recovery_changes(observations):
+    """Return the percentage change in heart rate and activity across a session.
 
     The first third of the observations is compared against the last third.
-    Recovery is reported only when both signals decline by more than the
-    threshold, because activity alone is unreliable in low-effort sessions
-    where small absolute values produce large percentage swings.
+    Returns a pair of None values when there are too few observations to split
+    or when a field has no measurements to average.
     """
     third = len(observations) // 3
     if third < 1:
-        return False
+        return None, None
 
     first = observations[:third]
     last = observations[-third:]
@@ -92,10 +91,19 @@ def detect_recovery(observations, threshold=RECOVERY_THRESHOLD):
         mean_of(collect_field(first, "activity_level")),
         mean_of(collect_field(last, "activity_level")),
     )
+    return heart_rate_change, activity_change
 
+
+def detect_recovery(observations, threshold=RECOVERY_THRESHOLD):
+    """True when both heart rate and activity fall across the session.
+
+    Recovery is reported only when both signals decline by more than the
+    threshold, because activity alone is unreliable in low-effort sessions
+    where small absolute values produce large percentage swings.
+    """
+    heart_rate_change, activity_change = recovery_changes(observations)
     if heart_rate_change is None or activity_change is None:
         return False
-
     return heart_rate_change < threshold and activity_change < threshold
 
 

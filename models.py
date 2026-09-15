@@ -1,10 +1,12 @@
 """Domain classes for the fitness session analyzer"""
 
 from analysis import (
+    RECOVERY_THRESHOLD,
     classify_intensity,
     collect_field,
     detect_recovery,
     mean_of,
+    recovery_changes,
     summarize,
 )
 
@@ -187,6 +189,29 @@ class Session:
             usable.append(observation)
         return usable
 
+    def rejected_observations(self):
+        """Return the windows that were excluded, each with its reasons.
+
+        Validation problems and low signal quality are reported separately,
+        because a value that cannot be real and a value the sensor does not
+        vouch for are different facts and the report should not merge them.
+        """
+        rejected = []
+        for observation in self.observations:
+            issues = observation.validation_issues()
+            low_quality = not observation.is_high_quality()
+            if not issues and not low_quality:
+                continue
+            rejected.append(
+                {
+                    "timestamp": observation.timestamp,
+                    "issues": issues,
+                    "low_signal_quality": low_quality,
+                    "signal_quality": observation.signal_quality,
+                }
+            )
+        return rejected
+
     def summary(self):
         """Return summary statistics for each field across usable observations.
 
@@ -227,6 +252,40 @@ class Session:
             return "insufficient_data"
         return level
 
+    def analyze(self):
+        """Return the full analysis of this session as one dictionary.
+
+        Everything the report needs is assembled here, so the reporting layer
+        formats a result rather than recalculating one.
+        """
+        usable = self.usable_observations()
+
+        heart_rate_delta = None
+        activity_average = None
+        if usable:
+            heart_rate_delta = self.participant.heart_rate_delta(
+                mean_of(collect_field(usable, "heart_rate"))
+            )
+            activity_average = mean_of(collect_field(usable, "activity_level"))
+
+        heart_rate_change, activity_change = recovery_changes(usable)
+
+        return {
+            "participant_id": self.participant.participant_id,
+            "total_observations": len(self.observations),
+            "usable_observations": len(usable),
+            "classification": self.classify(),
+            "summary": self.summary(),
+            "reasons": {
+                "heart_rate_delta": heart_rate_delta,
+                "activity_average": activity_average,
+                "heart_rate_change_percent": heart_rate_change,
+                "activity_change_percent": activity_change,
+                "recovery_threshold_percent": RECOVERY_THRESHOLD,
+            },
+            "rejected": self.rejected_observations(),
+        }
+
     def __repr__(self):
         return (
             f"Session(participant={self.participant.participant_id}, "
@@ -240,7 +299,7 @@ if __name__ == "__main__":
 
     profile, raw_observations = generate_fitness_data(
         participant_id="P001",
-        scenario="resting",
+        scenario="poor_quality",
         seed=42,
         number_of_windows=12,
     )
@@ -283,3 +342,9 @@ if __name__ == "__main__":
 
     print()
     print("Classification:", session.classify())
+
+    import pprint
+
+    print()
+    print("Full analysis:")
+    pprint.pprint(session.analyze())

@@ -296,33 +296,26 @@ class Session:
 
 if __name__ == "__main__":
     from data_generator import generate_fitness_data
+    from reporting import Report, DetailedReport
 
     profile, raw_observations = generate_fitness_data(
         participant_id="P001",
-        scenario="poor_quality",
+        scenario="recovery",
         seed=42,
         number_of_windows=12,
     )
 
     session = Session.from_raw(profile, raw_observations)
 
-    print("Participant:", session.participant)
-    print("Delta for 95 bpm:", session.participant.heart_rate_delta(95))
-    print("Delta for missing:", session.participant.heart_rate_delta(None))
-    print()
-
     for observation in session.observations:
         print(observation)
-        print("    valid:", observation.is_valid(), end="")
-        print("  high quality:", observation.is_high_quality())
-        issues = observation.validation_issues()
-        if issues:
-            for issue in issues:
-                print("    issue:", issue)
+    print()
+    print(f"Usable: {len(session.usable_observations())} of {len(session.observations)}")
 
-    usable = session.usable_observations()
-    print(f"Usable: {len(usable)} of {len(session.observations)}")
-
+    # Hand-built window with several faults at once. The generator never
+    # produces more than one fault per window, so this is the only case that
+    # exercises validation_issues returning a list of more than one item. It is
+    # not part of the session and does not affect any count above.
     broken = Observation(
         timestamp=99,
         heart_rate=265,
@@ -331,20 +324,11 @@ if __name__ == "__main__":
         activity_level=-0.2,
         signal_quality=0.9,
     )
-    print(broken, "issues:", broken.validation_issues())
+    print("Multi-fault check:", broken.validation_issues())
+
+    analysis = session.analyze()
 
     print()
-    print("Summary:")
-    for field_name, stats in session.summary().items():
-        print(f"  {field_name}:")
-        for key, value in stats.items():
-            print(f"      {key}: {value}")
-
+    print(Report(analysis).render())
     print()
-    print("Classification:", session.classify())
-
-    import pprint
-
-    print()
-    print("Full analysis:")
-    pprint.pprint(session.analyze())
+    print(DetailedReport(analysis).render())

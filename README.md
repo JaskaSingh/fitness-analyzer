@@ -3,7 +3,7 @@
 **Selected option:** Option A
 
 **Name:** Jaskamal Singh Thiara
-**Student number:** [FILL IN]
+**Student number:** s374983
 **Course:** ACIT4420 Problem Solving with Scripting
 **Python version:** 3.12.4
 
@@ -327,3 +327,16 @@ sessions in total, and every one was classified correctly. That includes
 recovery with only 6 windows, where each third is only two windows. This shows
 the thresholds work for this simulator, but data where the levels overlap more
 would give sessions that no fixed threshold could classify correctly.
+
+## Sources and use of AI
+
+`data_generator.py` and `example_usage.py` were provided with the assignment
+and have not been modified.
+
+I used Claude (Anthropic) as a supporting tool during parts of the project. It
+was used to help clarify programming concepts, improve code structure and
+documentation, assist with identifying appropriate classification thresholds
+and improve the wording and organisation of the README. The implementation,
+testing, interpretation of results and final design decisions were carried out
+by me. I reviewed, tested and critically assessed all AI-assisted suggestions
+before including them in the final work.

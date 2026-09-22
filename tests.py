@@ -35,7 +35,7 @@ def build_session(name):
 
 
 def test_classification_matches_each_sample():
-    """Every sample scenario is classified as the label it was generated for."""
+    """Each sample gets the label it was generated for."""
     for name in SCENARIOS:
         session = build_session(name)
         result = session.classify()
@@ -44,7 +44,7 @@ def test_classification_matches_each_sample():
 
 
 def test_unusable_sample_yields_no_usable_windows():
-    """A session of faulty windows is empty but still reports a full analysis."""
+    """The unusable sample has no usable windows but still gives a full analysis."""
     session = build_session("unusable")
 
     assert len(session.usable_observations()) == 0
@@ -67,7 +67,7 @@ def test_unusable_sample_yields_no_usable_windows():
 
 
 def test_validation_reports_every_fault():
-    """A window with four faults reports four issues, a clean one reports none."""
+    """A window with four faults gives four issues and a clean one gives none."""
     broken = Observation(
         timestamp=99,
         heart_rate=265,
@@ -79,7 +79,7 @@ def test_validation_reports_every_fault():
     issues = broken.validation_issues()
     assert len(issues) == 4, f"expected 4 issues, got {issues}"
     assert broken.is_valid() is False
-    # Invalid values and a trustworthy sensor are separate facts.
+    # Bad values with a good signal, so validity and quality are separate checks.
     assert broken.is_high_quality() is True
 
     clean = Observation(
@@ -95,7 +95,7 @@ def test_validation_reports_every_fault():
 
 
 def test_calculations_survive_empty_and_zero_input():
-    """The helpers return None instead of raising on empty or zero input."""
+    """The helpers return None instead of crashing on empty or zero input."""
     assert mean_of([]) is None
     assert mean_of([2, 4]) == 3
     assert percent_change(0, 40) is None
@@ -109,7 +109,7 @@ def test_calculations_survive_empty_and_zero_input():
 
 
 def test_detailed_report_extends_the_base_report():
-    """The subclass adds material to the parent output rather than replacing it."""
+    """DetailedReport adds to the base report instead of replacing it."""
     analysis = build_session("resting").analyze()
     base = Report(analysis).render()
     detailed = DetailedReport(analysis).render()

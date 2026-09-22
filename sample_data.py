@@ -1,7 +1,7 @@
 """Named sample scenarios for the fitness session analyzer.
 
-Each entry fixes a generator scenario and a seed, so every run of main.py
-produces the same five reports and results can be discussed and checked.
+Each sample has a fixed seed, so main.py gives the same five reports every
+time it runs.
 """
 
 from data_generator import generate_fitness_data

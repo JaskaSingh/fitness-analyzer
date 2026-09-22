@@ -1,4 +1,4 @@
-"""Domain classes for the fitness session analyzer"""
+"""Domain classes for the fitness session analyzer."""
 
 from analysis import (
     RECOVERY_THRESHOLD,
@@ -9,6 +9,7 @@ from analysis import (
     recovery_changes,
     summarize,
 )
+
 
 class Observation:
     """A single observation window from a wearable device."""
@@ -42,7 +43,7 @@ class Observation:
         )
 
     def is_high_quality(self, threshold=0.7):
-        """True when the signal quality is above the threshold."""
+        """Return True if the signal quality is above the threshold."""
         if self.signal_quality is None:
             return False
         return self.signal_quality > threshold
@@ -50,7 +51,7 @@ class Observation:
     def validation_issues(self):
         """Return a list of problems with this observation.
 
-        An empty list means the observation passed every rule.
+        An empty list means it passed every check.
         """
         issues = []
 
@@ -82,14 +83,15 @@ class Observation:
         return issues
 
     def is_valid(self):
-        """True when the observation has no validation issues."""
+        """Return True if the observation has no validation issues."""
         return not self.validation_issues()
-    
+
     def __repr__(self):
         return (
             f"Observation(t={self.timestamp}, hr={self.heart_rate}, "
             f"activity={self.activity_level}, quality={self.signal_quality})"
         )
+
 
 class Participant:
     """A participant and their personal baseline measurements."""
@@ -133,11 +135,10 @@ class Participant:
         return self._baseline_temperature
 
     def heart_rate_delta(self, measured):
-        """How far a measured heart rate sits above this participant's baseline.
+        """Return how far a measured heart rate is above the baseline.
 
-        Returns None when the measurement is missing or when no baseline is
-        known, so callers can skip the window instead of comparing against
-        nothing. A negative result means the measurement sits below baseline.
+        Returns None if the measurement or the baseline is missing. A negative
+        result means the measurement is below baseline.
         """
         if measured is None or self._baseline_heart_rate is None:
             return None
@@ -149,18 +150,19 @@ class Participant:
             f"hr={self._baseline_heart_rate}, "
             f"skin={self._baseline_skin_response}, "
             f"temp={self._baseline_temperature})"
-        )    
+        )
+
 
 class Session:
     """A training session: one participant and their observation windows."""
 
     SUMMARY_FIELDS = (
-            "heart_rate",
-            "skin_response",
-            "temperature",
-            "activity_level",
-            "signal_quality",
-        )
+        "heart_rate",
+        "skin_response",
+        "temperature",
+        "activity_level",
+        "signal_quality",
+    )
 
     def __init__(self, participant, observations):
         self.participant = participant
@@ -174,12 +176,7 @@ class Session:
         return cls(participant, observations)
 
     def usable_observations(self):
-        """Return only the observations worth analysing.
-
-        A window is usable when every value passes validation and the sensor
-        reports enough signal quality for those values to be trusted. Those are
-        two separate questions, which is why they are two separate checks.
-        """
+        """Return the windows that are valid and have high enough signal quality."""
         usable = []
         for observation in self.observations:
             if not observation.is_valid():
@@ -190,11 +187,10 @@ class Session:
         return usable
 
     def rejected_observations(self):
-        """Return the windows that were excluded, each with its reasons.
+        """Return the rejected windows and the reasons for each one.
 
-        Validation problems and low signal quality are reported separately,
-        because a value that cannot be real and a value the sensor does not
-        vouch for are different facts and the report should not merge them.
+        Invalid values and low signal quality are kept apart, since an
+        impossible reading and an untrusted one are different problems.
         """
         rejected = []
         for observation in self.observations:
@@ -213,11 +209,10 @@ class Session:
         return rejected
 
     def summary(self):
-        """Return summary statistics for each field across usable observations.
+        """Return average, minimum, maximum and count for each field.
 
-        Fields are summarised only over windows that passed validation and the
-        quality check, so a session with nothing usable returns a dictionary
-        with the same shape and zero counts throughout.
+        Only usable windows are included. With no usable windows every field
+        still has all four keys, with a count of 0.
         """
         usable = self.usable_observations()
         result = {}
@@ -226,13 +221,11 @@ class Session:
         return result
 
     def classify(self):
-        """Return the session classification.
+        """Return the classification for this session.
 
-        The order of the checks matters. Insufficient data comes first because
-        no other question can be answered without measurements. Recovery comes
-        before intensity because a recovering session averages out to a middling
-        effort level, so the intensity rules would describe it as moderate and
-        lose the fact that it was trending down.
+        Insufficient data is checked first, then recovery, then intensity.
+        Recovery has to come before intensity, because a session that starts
+        high and ends low averages out as moderate.
         """
         usable = self.usable_observations()
         if not usable:
@@ -253,11 +246,7 @@ class Session:
         return level
 
     def analyze(self):
-        """Return the full analysis of this session as one dictionary.
-
-        Everything the report needs is assembled here, so the reporting layer
-        formats a result rather than recalculating one.
-        """
+        """Return everything the report needs as one dictionary."""
         usable = self.usable_observations()
 
         heart_rate_delta = None
@@ -312,10 +301,9 @@ if __name__ == "__main__":
     print()
     print(f"Usable: {len(session.usable_observations())} of {len(session.observations)}")
 
-    # Hand-built window with several faults at once. The generator never
-    # produces more than one fault per window, so this is the only case that
-    # exercises validation_issues returning a list of more than one item. It is
-    # not part of the session and does not affect any count above.
+    # A window with several faults at once. The generator only puts one fault
+    # in each window, so this checks that validation_issues can return more
+    # than one. It is not added to the session.
     broken = Observation(
         timestamp=99,
         heart_rate=265,

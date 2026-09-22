@@ -4,6 +4,7 @@ INTENSITY_LEVELS = ("resting", "moderate_activity", "high_activity")
 
 RECOVERY_THRESHOLD = -15.0
 
+
 def mean_of(values):
     """Return the arithmetic mean, or None when there is nothing to average."""
     if not values:
@@ -12,10 +13,10 @@ def mean_of(values):
 
 
 def collect_field(observations, field_name):
-    """Return the values of one field across observations, skipping None.
+    """Return one field's values from a list of observations, skipping None.
 
-    The field is looked up by name at runtime, so one function serves every
-    field rather than five near-identical ones.
+    The field is looked up by name with getattr, so the same function works
+    for every field.
     """
     values = []
     for observation in observations:
@@ -28,9 +29,8 @@ def collect_field(observations, field_name):
 def summarize(values):
     """Return average, minimum, maximum and count for a list of values.
 
-    All four keys are always present. An empty list gives None for the three
-    statistics and a count of 0, so callers can read the dictionary without
-    checking whether it has the keys they expect.
+    An empty list still returns all four keys, with None for the statistics
+    and 0 for the count.
     """
     if not values:
         return {
@@ -50,9 +50,8 @@ def summarize(values):
 def percent_change(earlier, later):
     """Return the change from earlier to later as a percentage of earlier.
 
-    Returns None when either value is missing or when earlier is zero, since
-    there is no meaningful percentage of nothing. A negative result means the
-    value fell.
+    Returns None if either value is missing or if earlier is zero. A negative
+    result means the value went down.
     """
     if earlier is None or later is None:
         return None
@@ -69,12 +68,13 @@ def format_value(value, digits=1):
         return round(value, digits)
     return value
 
-def recovery_changes(observations):
-    """Return the percentage change in heart rate and activity across a session.
 
-    The first third of the observations is compared against the last third.
-    Returns a pair of None values when there are too few observations to split
-    or when a field has no measurements to average.
+def recovery_changes(observations):
+    """Return the percentage change in heart rate and activity over a session.
+
+    Compares the average of the first third of the observations with the last
+    third. Returns (None, None) if there are fewer than three observations, and
+    None for a field that has no values to average.
     """
     third = len(observations) // 3
     if third < 1:
@@ -95,11 +95,10 @@ def recovery_changes(observations):
 
 
 def detect_recovery(observations, threshold=RECOVERY_THRESHOLD):
-    """True when both heart rate and activity fall across the session.
+    """Return True if heart rate and activity both drop by more than the threshold.
 
-    Recovery is reported only when both signals decline by more than the
-    threshold, because activity alone is unreliable in low-effort sessions
-    where small absolute values produce large percentage swings.
+    Both have to drop, because activity on its own is unreliable in low-effort
+    sessions where small values give large percentage swings.
     """
     heart_rate_change, activity_change = recovery_changes(observations)
     if heart_rate_change is None or activity_change is None:
@@ -110,8 +109,8 @@ def detect_recovery(observations, threshold=RECOVERY_THRESHOLD):
 def classify_intensity(heart_rate_delta, activity_average):
     """Return an intensity level from the heart rate delta and mean activity.
 
-    Each signal is classified on its own scale and the lower of the two is
-    returned, so a session counts as high intensity only when both agree.
+    Each signal gets its own level and the lower one is used, so a session is
+    only high activity if both signals agree.
     """
     if heart_rate_delta is None or activity_average is None:
         return None

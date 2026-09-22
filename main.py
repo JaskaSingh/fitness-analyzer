@@ -9,7 +9,7 @@ from sample_data import SCENARIOS, load_scenario
 
 
 def analyze_scenario(name):
-    """Build, analyse and render one named scenario."""
+    """Return the detailed report for one named scenario."""
     profile, raw_observations = load_scenario(name)
     session = Session.from_raw(profile, raw_observations)
     return DetailedReport(session.analyze()).render()

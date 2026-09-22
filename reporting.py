@@ -1,7 +1,7 @@
-"""Report rendering for the fitness session analyzer.
+"""Report classes for the fitness session analyzer.
 
-Reports return strings rather than printing them, so the caller decides where
-the output goes and the tests can assert on the content.
+The reports return a string instead of printing, so main.py decides what to do
+with it and the tests can check the text.
 """
 
 from analysis import format_value
@@ -44,10 +44,10 @@ class Report:
 
 
 class DetailedReport(Report):
-    """The short report plus the per-field table, the reasoning and rejections."""
+    """The short report plus a field table, the reasons and the rejected windows."""
 
     def render(self):
-        """Return the base report extended with supporting detail."""
+        """Return the base report with the extra sections added."""
         lines = [super().render()]
 
         lines.append("")
